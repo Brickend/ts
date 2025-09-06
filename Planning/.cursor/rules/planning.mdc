@@ -1,0 +1,188 @@
+---
+description: "specification for deterministic, trackable project management with Module and Project modes"
+globs: ["**/Planning/"]
+alwaysApply: true
+---
+
+Perfect—two upgrades to the spec:
+	1.	Acceptance Criteria must be checkable items (with IDs, same semantics as TODOs).
+	2.	Project-mode rule for big scopes: define scope → phases → modules before breaking work down.
+
+Below is the updated, drop-in system rule (replaces the previous one) and two canonical templates (Module mode and Project mode).
+
+LLM SYSTEM RULE — Canonical TODO.md Spec (v0.2)
+
+Goal: Deterministic Markdown the toolchain can lint and humans can run. Every file is either Module mode (for a single component) or Project mode (for a big scope with phases).
+
+Hard constraints
+	•	Valid Markdown.
+	•	Headings and fixed order:
+
+# <Title>
+## Implementation Documentation
+## TODO List
+## Clarifications (by ID)
+## How to Use This TODO
+## Acceptance Criteria
+## Metadata
+
+	•	TODO items: one per line, GitHub checkbox, stable ID in square brackets.
+	•	Format: - [ ] [T-001] <imperative label>
+	•	Completed: - [x] [T-001] … (lowercase x)
+	•	IDs unique, incremental, never renumbered.
+	•	Clarifications: only for tasks needing context.
+	•	Subsections: ### T-003 — Clarification
+	•	How to Use: include these lines verbatim:
+	1.	Read the entries file first.
+	2.	Execute tasks in the TODO List order.
+	3.	If a task needs context, open its matching section in "Clarifications (by ID)".
+	•	Acceptance Criteria are checkmarks with AC-IDs and optional traceability:
+	•	- [ ] [AC-001] <testable outcome> (verifies: T-002, T-004)
+	•	May be checked ([x]) only when the referenced tasks’ outcomes are demonstrably met.
+	•	Metadata is a fenced YAML block containing required keys (see templates).
+
+Content rules
+	•	Implementation Documentation must answer:
+	•	What it does (scope, inputs/outputs)
+	•	How it works (flow, components)
+	•	Interfaces & side effects (APIs/DB/files/env)
+	•	Constraints (permissions, limits, perf)
+	•	TODO List defines execution order. Keep labels short; move detail to Clarifications.
+	•	Acceptance Criteria: objective, verifiable, and—when applicable—reference the T-* they verify via (verifies: …).
+
+Project-mode rule (for big scopes with phases)
+
+When the work is a multi-phase project (e.g., “Brickend Base Project”), use Project mode at the repository root:
+
+Additional sections and rules:
+	•	Insert a Phases section (with P-IDs): - [ ] [P-01] Phase title — goal.
+	•	Each phase must list its gate ACs: - [ ] [AC-…] … (verifies: P-01)
+	•	Insert a Modules Registry: list modules (namespaces) that will each get their own TODO.md (Module mode).
+	•	Use M-IDs for modules and map them to phases.
+	•	Insert a Decomposition Map (traceability ledger):
+	•	For every Phase (P-ID), enumerate which Module TODOs/Tasks (M-ID / T-IDs) implement it.
+	•	Insert Risks & Assumptions (concise bullets).
+	•	The Project TODO List contains cross-cutting work (program-level tasks), not module internals.
+	•	Module files (Module mode) live under each module’s folder and follow the standard Module template below.
+
+Validation rules (self-check before output)
+	•	All referenced IDs (T-, AC-, P-, M-) exist and are unique in their scope.
+	•	Every Clarification target (T-ID) exists.
+	•	All required headings exist in the correct order.
+	•	Metadata YAML parses and includes required keys for the chosen mode.
+	•	Each phase in Project mode has at least one AC that references it.
+	•	No TODO or AC without an ID.
+
+⸻
+
+Module mode — Minimal template
+
+# <Module Name>
+
+## Implementation Documentation
+- **Purpose:** <what/why in 1 paragraph>
+- **How it works (flow):** <1–5 bullets>
+- **Interfaces & side effects:** <APIs/DB/files/env vars>
+- **Constraints:** <permissions/limits/perf/envs>
+
+## TODO List
+- [ ] [T-001] <short, imperative>
+- [ ] [T-002] <short, imperative>
+- [ ] [T-003] <short, imperative>  <!-- details in Clarifications -->
+- [ ] [T-004] <short, imperative>
+
+## Clarifications (by ID)
+### T-003 — Clarification
+- **Context:** <why / edge cases>
+- **Related:** <entries_path>#<anchor>
+- **Notes:** <constraints/alternatives>
+
+## How to Use This TODO
+1. Read the entries file first.
+2. Execute tasks in the TODO List order.
+3. If a task needs context, open its matching section in "Clarifications (by ID)".
+
+## Acceptance Criteria
+- [ ] [AC-001] <objective, testable outcome> (verifies: T-001, T-002)
+- [ ] [AC-002] <objective, testable outcome> (verifies: T-003)
+
+## Metadata
+```yaml
+mode: module
+entries_path: ./docs/entries.md
+last_updated: 2025-09-03
+owner: fusioncore@core
+status: Active   # Active | On Hold | Done
+version: 0.2.0
+related:
+  - ./supabase/functions/api/index.ts
+  - ./services/users.yaml
+
+---
+
+## Project mode — Canonical template (for big scopes)
+
+```markdown
+# <Project Name>
+
+## Implementation Documentation
+- **Scope:** <big picture + out-of-scope>
+- **Architecture:** <key components + data flow in bullets>
+- **Interfaces & side effects:** <external systems/APIs/db>
+- **Constraints:** <security/RLS, perf, envs>
+
+## Phases
+- [ ] [P-01] <Phase name> — <goal/outcome>
+- [ ] [P-02] <Phase name> — <goal/outcome>
+- [ ] [P-03] <Phase name> — <goal/outcome>
+
+## Modules Registry
+- [ ] [M-usr] Users — `./modules/users/TODO.md`
+- [ ] [M-org] Organizations — `./modules/organizations/TODO.md`
+- [ ] [M-gw] API Gateway — `./modules/gateway/TODO.md`
+
+## Decomposition Map
+- **P-01** → implements via: M-gw:T-001,T-004; M-usr:T-003; M-org:T-002
+- **P-02** → implements via: M-usr:T-010,…  <!-- add as you break down -->
+- **P-03** → …
+
+## TODO List (project-level work)
+- [ ] [T-001] Establish YAML schema baselines across modules
+- [ ] [T-002] CI pipeline for generate/migrate/test across all modules
+- [ ] [T-003] Project docs “How to add a module”
+
+## Clarifications (by ID)
+### T-002 — Clarification
+- **Context:** CI must run ephemeral DB per module.
+
+## How to Use This TODO
+1. Read the entries file first.
+2. Execute tasks in the TODO List order.
+3. If a task needs context, open its matching section in "Clarifications (by ID)".
+
+## Acceptance Criteria
+- [ ] [AC-001] Phase P-01 gate met (verifies: P-01, T-001, T-002)
+- [ ] [AC-002] Phase P-02 gate met (verifies: P-02)
+- [ ] [AC-003] Module TODOs synced (verifies: M-usr, M-org, M-gw)
+
+## Metadata
+```yaml
+mode: project
+entries_path: ./docs/entries.md
+last_updated: 2025-09-03
+owner: fusioncore@core
+status: Active
+version: 0.2.0
+phases: [P-01, P-02, P-03]
+modules: [M-usr, M-org, M-gw]
+related:
+  - ./docs/yaml-reference.md
+  - ./supabase/migrations/
+
+---
+
+## Optional knobs
+- **ID prefixes**: `T-` / `AC-` / `P-` / `M-` (defaults shown).  
+- **Traceability**: enforce `(verifies: …)` on every AC in CI.  
+- **Mode**: set via `Metadata.mode` (`project` or `module`).
+
