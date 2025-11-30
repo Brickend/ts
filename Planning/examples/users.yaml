@@ -1,0 +1,137 @@
+# Users Service - MVP Reference Implementation
+# This demonstrates the core service.yaml schema for the Brickend MVP
+
+service:
+  name: users
+  description: "User management service with profile data and organization membership"
+  version: "1.0.0"
+
+# Database table definition
+table:
+  name: user_profiles
+  description: "User profile information and metadata"
+  
+  # Table fields with types and constraints
+  fields:
+    - name: id
+      type: uuid
+      primary_key: true
+      default: gen_random_uuid()
+      
+    - name: email
+      type: text
+      unique: true
+      nullable: false
+      
+    - name: display_name
+      type: text
+      nullable: false
+      
+    - name: avatar_url
+      type: text
+      nullable: true
+      
+    - name: bio
+      type: text
+      nullable: true
+      
+    - name: created_at
+      type: timestamptz
+      default: now()
+      nullable: false
+      
+    - name: updated_at
+      type: timestamptz
+      default: now()
+      nullable: false
+
+  # Indexes for performance
+  indexes:
+    - name: idx_user_profiles_email
+      fields: [email]
+      unique: true
+      
+    - name: idx_user_profiles_created_at
+      fields: [created_at]
+
+  # Row Level Security policies
+  rls:
+    enabled: true
+    policies:
+      - name: "Users can view their own profile"
+        operation: SELECT
+        condition: "auth.uid() = id"
+        
+      - name: "Users can update their own profile"
+        operation: UPDATE
+        condition: "auth.uid() = id"
+        
+      - name: "Users can insert their own profile"
+        operation: INSERT
+        condition: "auth.uid() = id"
+
+# API endpoints to generate
+endpoints:
+  # Standard CRUD operations
+  - name: getProfile
+    method: GET
+    path: "/users/me"
+    description: "Get current user's profile"
+    auth_required: true
+    
+  - name: updateProfile
+    method: PUT
+    path: "/users/me"
+    description: "Update current user's profile"
+    auth_required: true
+    request_body:
+      display_name:
+        type: string
+        required: false
+      bio:
+        type: string
+        required: false
+      avatar_url:
+        type: string
+        required: false
+        
+  - name: listUsers
+    method: GET
+    path: "/users"
+    description: "List users (admin only or organization members)"
+    auth_required: true
+    query_params:
+      limit:
+        type: number
+        default: 20
+        max: 100
+      offset:
+        type: number
+        default: 0
+        
+  - name: getUser
+    method: GET
+    path: "/users/{id}"
+    description: "Get specific user profile"
+    auth_required: true
+    path_params:
+      id:
+        type: uuid
+        required: true
+
+# Security and permissions
+security:
+  # Authentication requirements
+  auth:
+    required: true
+    type: "supabase_jwt"
+    
+  # Organization context (for multi-tenant features)
+  organization:
+    required: false  # MVP: optional org context
+    header: "X-Org-Id"
+    
+  # Rate limiting
+  rate_limit:
+    requests_per_minute: 60
+    burst: 10
