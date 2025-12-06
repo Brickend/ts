@@ -1,0 +1,1 @@
+Basic CLi setup with packgae and schema, next step improve the schema and start workign on the functions for the API + migrations and supabase 
